@@ -26,17 +26,17 @@ import java.util.logging.Logger;
  * @author dpatik
  */
 public class Contador {
-    static boolean ckn = true;
+    static boolean ckn_flg = true;
     static long T = 80;    //T=t1-t0   (tck) (t20mm)
     static long T1 = 600;  //T1=t0-t01  (t150mm)
-    static long t0 = 600;
+    static long t0 = 600, t0_ant;
     static long t1 = 680;
     static long t01;
     static long T_lectura=40;  //  T_lectura=T/2    tiempo en milisegundos
     static String granja = "1";
     static int Granja = 1;
     static int NewGranja;
-    static int contador, cknxh, anterior;
+    static int contador, cknxm, cknxh, perchasxm, anterior, cknpromxm, n_min, n_perchas_ant, perchasxh, n_perchas;
     static int NOCkn = 0; 
 //    static Display lcd = new Display();
     static boolean newfrm = false;
@@ -51,7 +51,7 @@ public class Contador {
     
         //static Scanner in = new Scanner(System.in);
     
-    
+    final static MyCknsql msq = new MyCknsql();
 
     
     public static void main(String[] args) {
@@ -72,22 +72,22 @@ public class Contador {
     final GpioPinDigitalInput clk = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_UP);
     final GpioPinDigitalInput ckn = gpio.provisionDigitalInputPin(RaspiPin.GPIO_05, PinPullResistance.PULL_UP);
         
-        long Tpreboot, Tpostboot, Toffline;
-        final MyCknsql msq = new MyCknsql();
+        //long Tpreboot, Tpostboot, Toffline;
+                
         //Eth0 eth = new Eth0();
         if (args.length != 1) {
 //    System.out.println("Usage: bla bla bla");
 //    return;
         } else {
-            String licenciar = args[0];   //recibo la clave para licenciar
+            String lic_key = args[0];   //recibo la clave para licenciar
             //llamo a Kripton(licenciar) y actualizo la bd
-            //Kripton krp = new Kripton(licenciar);
+            //Kripton krp = new Kripton(lic_key);
 
             //System.out.println("Licencia " + krp.md5(eth.GetMAC()));
             //msq.SetLic(krp.md5(eth.GetMAC()));
             System.exit(0);
         }
-        String Version = "CONTADOR 20160822-1"; 
+        String Version = "CONTADOR 20160824-5"; 
         
         msq.LOG("INICIO DE LA APLICACION // VERSION "+Version);
         try {
@@ -108,51 +108,13 @@ public class Contador {
         ahora = fecha_hoy;
         
         contador = msq.GetPollos(fecha_hoy);
-        extcont = msq.SumaDia(fecha_hoy) + 32000;         //para que nuca cuente mas de 32k
-        msq.LOG("CONTADOR EXTENDIDO= " + String.valueOf(extcont));
+        extcont = msq.SumaDia(fecha_hoy) + 10000;         //para que nuca cuente mas de 32k
         Granja = msq.GetFrm(fecha_hoy);
         msq.LOG("CONTADOR: "+String.valueOf(contador)+" GRANJA: "+String.valueOf(Granja)); 
-        Tpostboot = System.currentTimeMillis();
-        msq.LOG("POSTBOOT= " + String.valueOf(Tpostboot));
+//        Tpostboot = System.currentTimeMillis();
+//        msq.LOG("POSTBOOT= " + String.valueOf(Tpostboot));
         
-//////        //create and register gpio pin listener
-//////        gpio.addListener(new GpioPinListenerDigital() {
-//////
-//////            @Override
-//////            public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-//////               // System.out.println(event.getPin().getName() + " "+event.getState());
-//////                if(event.getPin().getName().equalsIgnoreCase("clk")){
-//////                    
-//////                    if(event.getState() == PinState.HIGH){ //entro a la percha
-//////                                                                                    // -----T1---
-//////                        t0 = System.currentTimeMillis();                            // --         --
-//////                        T1 = t0 - t01; //////////////////////T1 = t0 - t01 + T      // | |        | |
-//////                        if(T1 == 0){                                                // | |________| |
-//////                            T1=600;                                                 //t0 t01      t0
-//////                        }
-//////                        cknxh = (int) (3600 * 1000 / (T1+T));   //velocidad de la noria T1+T=tiempo entre pollos
-//////                        msq.InsertaTiempo(false, T, T1, cknxh);
-//////                        
-//////                    }else{ //salgo de la percha
-//////                        
-//////                        t1 = System.currentTimeMillis();
-//////                        t01 = t1;
-//////                        T = t1 - t0;
-//////                        
-//////                        if (myButtons[1].getState() == PinState.HIGH) {
-//////                            Led.pulse(50);
-//////                            NOCkn = 0;
-//////                            contador++;
-//////                            msq.MasUno(ahora, Granja);
-//////
-//////                        }
-//////                        
-//////                    } //FIN isHIGH
-//////                    
-//////                }
-//////                
-//////            } //FIN de handlegpio
-//////        }, myButtons);        //FIN de LISTENER
+
         
         // create and register gpio pin listener
         clk.addListener(new GpioPinListenerDigital() {
@@ -162,33 +124,60 @@ public class Contador {
                 // display pin state on console
                 //System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
                 
-                    if(event.getState() == PinState.HIGH){ //entro a la percha
-                                                                                    // -----T1---
-                        t0 = System.currentTimeMillis();                            // --         --
-                        T1 = t0 - t01; //////////////////////T1 = t0 - t01 + T      // | |        | |
-                        if(T1 == 0){                                                // | |________| |
-                            T1=600;                                                 //t0 t01      t0
-                        }
-                        cknxh = (int) (3600 * 1000 / (T1+T));   //velocidad de la noria T1+T=tiempo entre pollos
-                        msq.InsertaTiempo(false, T, T1, cknxh);
-                        
-                    }else{ //salgo de la percha
-                        
-                        t1 = System.currentTimeMillis();
-                        t01 = t1;
-                        T = t1 - t0;
-                        
-                        if (ckn.getState() == PinState.HIGH) {
-                            Led.pulse(50);
+                if (event.getState() == PinState.HIGH) { //entro a la percha
+
+                    if (ckn.getState() == PinState.HIGH) {      //miro si hay pollo al entrar a la percha
+                        ckn_flg = true;
+                    } else {
+                        ckn_flg = false;
+                    }
+                                                                               /////// // -----T1---
+                    t0 = System.currentTimeMillis();                           /////// // --         --
+                    //////T1 = t0 - t01; //////////////////////T1 = t0 - t01 + T      // | |        | |
+//////                    if (T1 == 0) {                                              // | |________| |
+//////                        T1 = 600;                                               //t0 t01      t0
+//////                    }
+//                    if (t0_ant != 0) {
+//                        T1 = t0 - t0_ant;
+//                        t0_ant = t0;
+//
+//
+//                        //perchasxh = (int) (3600 * 1000 / (T1 + T));   //velocidad de la noria T1+T=tiempo entre pollos
+
+
+                } else { //salgo de la percha
+                        n_perchas++;
+//////                    t1 = System.currentTimeMillis();
+//////                    t01 = t1;
+//////                    T = t1 - t0;
+
+                    if (ckn.getState() == PinState.HIGH && ckn_flg) {   //si hay pollo al entrar y al  salir de la percha  ===> HAY POLLO
+                        Led.pulse(50);
+                        NOCkn = 0;
+
+                        if (newfrm) {
+                            newfrm = false;
                             NOCkn = 0;
-                            contador++;
-                            msq.MasUno(ahora, Granja);
+                            NewGranja = msq.GetNewFrm();
+                            if (Granja != NewGranja) {
+                                contador = 0;
+                                Granja = NewGranja;                             //--------->>>>ESTE ES EL QUE VALE
+                                msq.LOG("CAMBIO de GRANJA: " + String.valueOf(Granja));
+                                msq.SetEstadistica(Granja, cknxh, perchasxh);
+                            }
                         }
+                        contador++;
+                        msq.MasUno(ahora, Granja);
                         
-                    } //FIN isHIGH
-                
-                
-                
+                    } else {   //NO HAY POLLO
+                        if (NOCkn > 15) {
+                            newfrm = true;
+                        } else {
+                            NOCkn++;
+                        }
+                    }
+                } //FIN isHIGH
+ 
             }
 
         });
@@ -207,7 +196,7 @@ public class Contador {
             if (fechahoy.after(fechadb)) {
                 contador = 0;
                 Granja = 1;
-                extcont = 32000;
+                extcont = 10000;
                 msq.SetFrm(Granja);
                 msq.NewDia(fecha_hoy, Granja);
                 msq.LOG("CAMBIO DE FECHA");
@@ -215,14 +204,43 @@ public class Contador {
                 System.out.println("REINICIO EL SO");
                 Reiniciar boot = new Reiniciar();
                 msq.LOG("REINICIO DEL SISTEMA");
-                Tpreboot = System.currentTimeMillis();
-                msq.LOG("PREBOOT = " + String.valueOf(Tpreboot));
+//                Tpreboot = System.currentTimeMillis();
+//                msq.LOG("PREBOOT = " + String.valueOf(Tpreboot));
                 boot.Reinicio();
             }
+            if (anterior == 0) {
+                cknxm = 0;
+            } else {
+                cknxm = contador - anterior;
+                cknpromxm = (n_min * cknpromxm + cknxm) / (n_min + 1);
+                n_min++;
+            }
             
+            if(n_perchas_ant == 0){
+                perchasxm = 0;
+            } else {
+                perchasxm = (n_perchas - n_perchas_ant);
+                perchasxh = perchasxm * 60;
+            }
             System.out.println("POLLOS X MIN: "+(contador - anterior));
+            System.out.println("PERCHAS POR MIN= "+perchasxm);
+            System.out.println("POLLOS PROM X MIN: "+cknpromxm);
+            System.out.println("n_min= "+n_min);
             System.out.println("CONTADOR = "+contador);
+            cknxh = cknpromxm * 60;
+            System.out.println("POLLOS PROM X H= "+cknxh);
+            
+            System.out.println("PERCHAS POR HORA= "+perchasxh+"\n");
+            
+            msq.SetCknxh(Granja, cknxh, perchasxh);
             anterior = contador;
+            n_perchas_ant = n_perchas;
+            
+            if(contador >= extcont){
+                extcont += 10000;
+                //GrbCol.GetGarbageColector(); //solo me muestra la memoria
+                GetGarbageColector();
+            }
             
             try {
                     Thread.sleep(60000);
@@ -232,5 +250,27 @@ public class Contador {
             
         }// FIN del WHILE
         
+
+        
     }//FIN del main
+    
+        public static void GetGarbageColector() {
+
+        try {
+            //System.out.println("********** INICIO: 'LIMPIEZA GARBAGE COLECTOR' **********");
+            Runtime basurero = Runtime.getRuntime();
+            //System.out.println("***********************************************************************");
+            //System.out.println("MEMORIA TOTAL 'JVM': " + basurero.totalMemory());
+            //System.out.println("MEMORIA [FREE] 'JVM' [ANTES]: " + basurero.freeMemory());
+            //System.out.println("***********************************************************************\n");
+            msq.LOG("MEMORIA TOTAL 'JVM': " + basurero.totalMemory());
+            msq.LOG("MEMORIA [FREE] 'JVM' [ANTES]: " + basurero.freeMemory());
+            basurero.gc(); //Solicitando ... 
+//////            System.out.println("MEMORIA [FREE] 'JVM' [DESPUES]: " + basurero.freeMemory());
+//////            System.out.println("********** FIN: 'LIMPIEZA GARBAGE COLECTOR' **********");
+            msq.LOG("MEMORIA [FREE] 'JVM' [DESPUES]: " + basurero.freeMemory());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }//
 }

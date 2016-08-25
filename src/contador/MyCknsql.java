@@ -30,7 +30,7 @@ public class MyCknsql {
     String pass = "";
     
     
-    public MyCknsql(){
+    public MyCknsql() {
         try {
 
             Class.forName(bdriver);
@@ -221,8 +221,8 @@ int qty = 0;
 
     public void MasUno(String fecha, int granja){
         //Connection cn = Conectar();
-        Statement st;
-        ResultSet rs;
+//        Statement st;
+//        ResultSet rs;
 int qty = 1;
 //       String query = "INSERT INTO faena_diaria (fecha, hora, qty)"
 //                    + " VALUES (?,?,?)";
@@ -436,11 +436,11 @@ Statement st;
     }
     
     public void LOG(String descripcion) {
-        Statement st;
-        ResultSet rs;
-
+        //Statement st;
+        //ResultSet rs;
 //       String query = "INSERT INTO faena_diaria (fecha, hora, qty)"
 //                    + " VALUES (?,?,?)";
+        
         String query = "INSERT INTO pollos_log (descripcion) VALUES (?)";
                 
 
@@ -449,6 +449,44 @@ Statement st;
             pst = cn.prepareCall(query);
             pst.setString(1, descripcion);
             
+            pst.execute();
+            //cn.close();
+        } catch (SQLException ex) {
+            Logger.getLogger(MyCknsql.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    void SetEstadistica(int Granja, int cknxh, int perchasxh) {
+        String query = "INSERT INTO estadisticas (granja, vel_noria, pollos_prom) VALUES (?, ?, ?)";
+                
+
+        PreparedStatement pst;
+        try {
+            pst = cn.prepareCall(query);
+            pst.setInt(1, Granja);
+            pst.setInt(2, perchasxh);
+            pst.setInt(3, cknxh);
+            
+            pst.execute();
+            //cn.close();
+        } catch (SQLException ex) {
+            Logger.getLogger(MyCknsql.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    void SetCknxh(int Granja, int cknxh, int perchasxh) {
+         String query = "INSERT INTO estadisticas (granja, vel_noria, pollos_prom) VALUES (?,?,?)"
+               + " ON DUPLICATE KEY UPDATE vel_noria="+perchasxh+", pollos_prom="+cknxh;
+       
+       PreparedStatement pst;
+        try {
+            pst = cn.prepareCall(query);
+            pst.setInt(1, Granja);
+            pst.setInt(2, perchasxh);
+            pst.setInt(3, cknxh);
+            
+            //System.out.println("fecha="+fecha+"  frm="+granja);
+
             pst.execute();
             //cn.close();
         } catch (SQLException ex) {
